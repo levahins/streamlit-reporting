@@ -1,1 +1,20 @@
-touch .gitignore
+# Игнорируем виртуальное окружение
+venv/
+.env
+
+# Игнорируем временные файлы
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Игнорируем конфиденциальные данные
+.secrets.toml
+*.json
+*.csv
+
+# Игнорируем IDE-файлы (если используете VSCode или PyCharm)
+.vscode/
+.idea/
+*.log
+
