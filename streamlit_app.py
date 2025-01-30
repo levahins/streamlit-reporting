@@ -27,10 +27,11 @@ st.subheader("Введите запрос на естественном язык
 if "dataframe" not in st.session_state:
     st.session_state["dataframe"] = None
 
-# Кнопка для обновления страницы
-if st.button("Очистить данные и начать новый запрос"):
-    st.session_state["dataframe"] = None
-    st.experimental_rerun()
+# Кнопка для сброса состояния
+reset_clicked = st.button("Очистить данные и начать новый запрос")
+if reset_clicked:
+    st.session_state.clear()  # Сбрасываем все данные в сессии
+    st.experimental_set_query_params()  # Обновляем страницу, очищая состояние
 
 # Форма для ввода запроса
 user_input = st.text_input("Введите текстовый запрос:", "")
