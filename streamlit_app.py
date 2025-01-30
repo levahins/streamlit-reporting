@@ -34,17 +34,25 @@ if st.button("Сформировать отчет"):
                 response.raise_for_status()
                 result = response.json()
 
-                if "data" in result and isinstance(result["data"], list) and len(result["data"]) > 0:
-                    df = pd.DataFrame(result["data"])
+                if "data" in result and isinstance(result["data"], str):
+                    # Разбиваем CSV-данные на строки
+                    raw_data = result["data"].strip().split("\r\n")
 
-                    # Принудительное приведение числовых колонок к float
-                    for col in df.columns[1:]:
-                        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+                    # Разделяем заголовки и строки
+                    headers = [header.strip('"') for header in raw_data[0].split(";")]
+                    rows = [row.split(";") for row in raw_data[1:]]
 
-                    # Определение числовых колонок
+                    # Преобразуем данные в DataFrame
+                    df = pd.DataFrame(rows, columns=headers)
+
+                    # Приводим числовые значения к float
+                    for col in headers[1:]:
+                        df[col] = pd.to_numeric(df[col].str.replace('"', ''), errors="coerce").fillna(0)
+
+                    # Определяем числовые колонки
                     numeric_columns = df.select_dtypes(include=["number"]).columns
 
-                    # Сортировка по первой числовой колонке
+                    # Сортируем по первой числовой колонке
                     if len(numeric_columns) > 0:
                         df = df.sort_values(by=numeric_columns[0], ascending=False)
 
