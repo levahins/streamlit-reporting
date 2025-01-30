@@ -1,6 +1,8 @@
 import streamlit as st
 import requests
 import pandas as pd
+from st_aggrid import AgGrid
+from st_aggrid.grid_options_builder import GridOptionsBuilder
 
 # URL n8n Webhook
 N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook-test/93ad63a0-8bab-4cf1-b446-f71ae3f988fa"
@@ -34,9 +36,15 @@ if st.button("Сформировать отчет"):
                         # Убираем вложенную структуру и преобразуем в таблицу
                         df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
 
+                        # Настраиваем интерактивную таблицу
+                        st.subheader("📊 Интерактивная таблица")
+                        gb = GridOptionsBuilder.from_dataframe(df)
+                        gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
+                        gb.configure_default_column(editable=False, groupable=True)  # Настройки колонок
+                        gridOptions = gb.build()
+
                         # Отображаем таблицу
-                        st.subheader("📊 Таблица данных")
-                        st.table(df)
+                        AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
                     else:
                         st.warning("Нет данных для отображения.")
                 else:
