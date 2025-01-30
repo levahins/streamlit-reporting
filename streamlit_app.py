@@ -41,10 +41,9 @@ if st.button("Сформировать отчет"):
                         # Преобразование данных таблицы в сериализуемые типы
                         df = df.astype(str)
 
-                        # Рассчет итоговой строки отдельно
+                        # Рассчет итоговой строки
                         numeric_columns = df.select_dtypes(include=["number"]).columns
-                        if len(numeric_columns) > 0:
-                            total_row = {col: df[col].astype(float).sum() if col in numeric_columns else "Итого" for col in df.columns}
+                        total_row = {col: df[col].astype(float).sum() if col in numeric_columns else "Итого" for col in df.columns}
 
                         # Настраиваем интерактивную таблицу
                         st.subheader("📊 Интерактивная таблица")
