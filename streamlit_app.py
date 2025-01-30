@@ -27,21 +27,24 @@ if st.button("Сформировать отчет"):
                 result = response.json()
 
                 # Проверяем, содержит ли результат ключ "data"
-                if "data" in result and isinstance(result["data"], list) and len(result["data"]) > 0:
-                    # Получаем строку CSV из JSON
-                    csv_data = result["data"][0]["data"]
+                if isinstance(result, list) and len(result) > 0 and "data" in result[0]:
+                    # Извлекаем CSV-данные из JSON
+                    csv_data = result[0]["data"]
+
+                    # Убираем лишние кавычки в начале и конце (если есть)
+                    csv_data = csv_data.strip("\"")
 
                     # Преобразуем строку CSV в DataFrame
                     df = pd.read_csv(io.StringIO(csv_data), sep=";", engine="python")
 
-                    # Попытка преобразовать числовые столбцы к float
+                    # Попытка преобразовать числовые столбцы в float
                     for col in df.columns[1:]:
                         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
                     # Определение числовых столбцов
                     numeric_columns = df.select_dtypes(include=["number"]).columns
 
-                    # Добавляем сортировку по первому числовому столбцу
+                    # Сортировка по первой числовой колонке
                     if len(numeric_columns) > 0:
                         df = df.sort_values(by=numeric_columns[0], ascending=False)
 
@@ -49,9 +52,9 @@ if st.button("Сформировать отчет"):
                     total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
                     total_row = {key: float(value) if isinstance(value, (int, float)) else value for key, value in total_row.items()}
 
-                    # Добавляем возможность выбора нескольких метрик для графика
+                    # Выбор метрик для графиков
                     selected_metrics = st.multiselect(
-                        "Выберите метрики для графика:", numeric_columns, default=[numeric_columns[0]] if len(numeric_columns) > 0 else []
+                        "Выберите метрики для графика:", numeric_columns, default=numeric_columns[:1]
                     )
 
                     # Создаем Dashboard с таблицей и графиками
@@ -68,7 +71,7 @@ if st.button("Сформировать отчет"):
                         gridOptions["pinnedBottomRowData"] = [total_row]
                         AgGrid(df, gridOptions=gridOptions, height=500, theme="streamlit")
 
-                    # Отображаем графики для выбранных метрик
+                    # Отображаем графики
                     with col2:
                         st.subheader("📈 Интерактивные графики")
                         for metric in selected_metrics:
@@ -82,7 +85,7 @@ if st.button("Сформировать отчет"):
                             )
                             st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.warning("Данные отсутствуют или пустые.")
+                    st.warning("Ошибка: Webhook вернул пустые или некорректные данные.")
             except requests.exceptions.RequestException as e:
                 st.error(f"Ошибка при запросе к n8n: {str(e)}")
             except Exception as e:
