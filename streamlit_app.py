@@ -53,30 +53,33 @@ if st.button("Сформировать отчет"):
                         total_row = {key: float(value) if isinstance(value, (int, float)) else value for key, value in total_row.items()}
 
                         # Настраиваем интерактивную таблицу
-                        st.subheader("📊 Интерактивная таблица")
                         gb = GridOptionsBuilder.from_dataframe(df)
                         gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
                         gb.configure_default_column(editable=False, groupable=True, sortable=True)  # Настройки колонок
                         gridOptions = gb.build()
 
-                        # Указываем итоговую строку явно
-                        gridOptions["suppressAggFuncInHeader"] = True
-                        gridOptions["pinnedBottomRowData"] = [total_row]
+                        # Создаем Dashboard с таблицей и графиком
+                        col1, col2 = st.columns(2)
 
-                        # Отображаем таблицу
-                        AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
+                        # Отображаем таблицу в первой колонке
+                        with col1:
+                            st.subheader("📊 Интерактивная таблица")
+                            gridOptions["suppressAggFuncInHeader"] = True
+                            gridOptions["pinnedBottomRowData"] = [total_row]
+                            AgGrid(df, gridOptions=gridOptions, height=500, theme="streamlit")
 
-                        # Отображаем интерактивный график
-                        st.subheader("📈 Интерактивный график")
-                        fig = px.bar(
-                            df[:-1],  # Исключаем итоговую строку
-                            x=df.columns[0],
-                            y=numeric_columns[0],
-                            labels={df.columns[0]: "Категории", numeric_columns[0]: "Значения"},
-                            title="Распределение значений",
-                            text_auto=True,
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
+                        # Отображаем интерактивный график во второй колонке
+                        with col2:
+                            st.subheader("📈 Интерактивный график")
+                            fig = px.bar(
+                                df[:-1],  # Исключаем итоговую строку
+                                x=df.columns[0],
+                                y=numeric_columns[0],
+                                labels={df.columns[0]: "Категории", numeric_columns[0]: "Значения"},
+                                title="Распределение значений",
+                                text_auto=True,
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.warning("Данные отсутствуют или пустые.")
                 else:
