@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 
@@ -38,12 +38,13 @@ if st.button("Сформировать отчет"):
                         for col in df.columns[1:]:
                             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-                        # Преобразование данных таблицы в сериализуемые типы
-                        df = df.astype(str)
+                        # Сортировка таблицы по убыванию значений в первом числовом столбце
+                        numeric_columns = df.select_dtypes(include=["number"]).columns
+                        if len(numeric_columns) > 0:
+                            df = df.sort_values(by=numeric_columns[0], ascending=False)
 
                         # Рассчет итоговой строки
-                        numeric_columns = df.select_dtypes(include=["number"]).columns
-                        total_row = {col: df[col].astype(float).sum() if col in numeric_columns else "Итого" for col in df.columns}
+                        total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
 
                         # Настраиваем интерактивную таблицу
                         st.subheader("📊 Интерактивная таблица")
@@ -59,15 +60,17 @@ if st.button("Сформировать отчет"):
                         # Отображаем таблицу
                         AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
 
-                        # Отображаем график
-                        st.subheader("📈 График")
-                        fig, ax = plt.subplots(figsize=(5, 4))
-                        ax.bar(df[df.columns[0]], df[df.columns[1]].astype(float), color="skyblue")
-                        ax.set_xlabel("Категории")
-                        ax.set_ylabel("Значения")
-                        ax.set_title("Распределение значений")
-                        plt.xticks(rotation=45, ha="right")
-                        st.pyplot(fig)
+                        # Отображаем интерактивный график
+                        st.subheader("📈 Интерактивный график")
+                        fig = px.bar(
+                            df[:-1],  # Исключаем итоговую строку
+                            x=df.columns[0],
+                            y=numeric_columns[0],
+                            labels={df.columns[0]: "Категории", numeric_columns[0]: "Значения"},
+                            title="Распределение значений",
+                            text_auto=True,
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.warning("Данные отсутствуют или пустые.")
                 else:
