@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 
 # URL n8n Webhook
 N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook-test/93ad63a0-8bab-4cf1-b446-f71ae3f988fa"
@@ -21,41 +22,21 @@ if st.button("Сформировать отчет"):
                 # Получаем результат
                 result = response.json()
 
-                # Обработка ошибок, если статус "NO"
-                if len(result) > 0 and result[0].get("status") == "NO":
-                    # Сообщение для уточнения запроса
-                    error_message = (
-                        "Ваш запрос неполный. "
-                        "Пожалуйста, уточните: за какой период нужно построить отчет, "
-                        "в каких единицах измерения (штуки, рубли и т.д.), и нужна ли детализация "
-                        "до уровня дистрибуторов или продуктов."
-                    )
-                    st.warning(error_message)
-                else:
-                    # Проверяем, если сообщение содержит данные
-                    if len(result) > 0 and "message" in result[0]:
-                        # Извлекаем сообщение
-                        message = result[0]["message"]
+                # Проверяем, если результат содержит данные
+                if len(result) > 0 and "data" in result[0]:
+                    raw_data = result[0]["data"]
 
-                        # Отображаем как текстовый отчет
-                        st.subheader("📄 Текстовый отчет")
-                        st.text(message)
+                    # Преобразуем массив массивов в DataFrame
+                    if raw_data and isinstance(raw_data, list):
+                        df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
 
-                        # Преобразуем Markdown в таблицу, если нужно
-                        if "--- | ---" in message:
-                            st.subheader("📊 Табличный вид")
-                            table_data = [
-                                row.split(" | ")
-                                for row in message.split("\n")
-                                if " | " in row
-                            ]
-                            table_header = table_data[0]
-                            table_rows = table_data[1:]
-                            
-                            # Отображаем таблицу
-                            st.table([dict(zip(table_header, row)) for row in table_rows])
+                        # Отображаем таблицу
+                        st.subheader("📊 Таблица данных")
+                        st.table(df)
                     else:
-                        st.warning("Пустой ответ от вебхука.")
+                        st.warning("Нет данных для отображения.")
+                else:
+                    st.warning("Ответ от Webhook не содержит данных.")
             except requests.exceptions.RequestException as e:
                 st.error(f"Ошибка при запросе к n8n: {str(e)}")
     else:
