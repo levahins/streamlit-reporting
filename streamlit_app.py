@@ -29,61 +29,48 @@ if st.button("Сформировать отчет"):
                 if "data" in result:
                     raw_data = result["data"]
 
-                    # Преобразуем вложенные массивы в DataFrame
-                    if isinstance(raw_data, list):
+                    # Проверяем, что raw_data не пустой
+                    if isinstance(raw_data, list) and len(raw_data) > 0:
+                        # Преобразуем вложенные массивы в DataFrame
                         df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
 
                         # Попытка преобразовать числовые столбцы к float
                         for col in df.columns[1:]:
-                            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-                        # Преобразование всех данных в сериализуемые типы
-                        df = df.astype(str)
-
-                        # Сортировка таблицы по убыванию значений в первом числовом столбце
-                        numeric_columns = df.select_dtypes(include=["number"]).columns
-                        if len(numeric_columns) > 0:
-                            df = df.sort_values(by=numeric_columns[0], ascending=False)
-
-                        # Рассчет суммы значений по каждому числовому столбцу
-                        sum_row = df[numeric_columns].sum().to_frame().T
-                        sum_row.insert(0, df.columns[0], "Итого")  # Добавляем текст "Итого" в первый столбец
-                        df = pd.concat([df, sum_row], ignore_index=True)
+                            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
                         # Преобразование данных таблицы в сериализуемые типы
                         df = df.astype(str)
 
-                        # Создаем макет с таблицей и графиком
-                        col1, col2 = st.columns([2, 1])
+                        # Рассчет итоговой строки отдельно
+                        numeric_columns = df.select_dtypes(include=["number"]).columns
+                        if len(numeric_columns) > 0:
+                            total_row = {col: df[col].astype(float).sum() if col in numeric_columns else "Итого" for col in df.columns}
 
-                        # Отображаем таблицу в первой колонке
-                        with col1:
-                            st.subheader("📊 Интерактивная таблица")
-                            gb = GridOptionsBuilder.from_dataframe(df)
-                            gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
-                            gb.configure_default_column(editable=False, groupable=True, sortable=True)  # Настройки колонок
-                            gridOptions = gb.build()
+                        # Настраиваем интерактивную таблицу
+                        st.subheader("📊 Интерактивная таблица")
+                        gb = GridOptionsBuilder.from_dataframe(df)
+                        gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
+                        gb.configure_default_column(editable=False, groupable=True, sortable=True)  # Настройки колонок
+                        gridOptions = gb.build()
 
-                            # Указываем итоговую строку явно
-                            gridOptions["suppressAggFuncInHeader"] = True
-                            gridOptions["pinnedBottomRowData"] = [
-                                {col: sum_row.iloc[0][col] if col in numeric_columns else "Итого" for col in df.columns}
-                            ]
+                        # Указываем итоговую строку явно
+                        gridOptions["suppressAggFuncInHeader"] = True
+                        gridOptions["pinnedBottomRowData"] = [total_row]
 
-                            AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
+                        # Отображаем таблицу
+                        AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
 
-                        # Отображаем график во второй колонке
-                        with col2:
-                            st.subheader("📈 График")
-                            fig, ax = plt.subplots(figsize=(5, 4))
-                            ax.bar(df[df.columns[0]][:-1], df[numeric_columns[0]][:-1], color="skyblue")
-                            ax.set_xlabel("Категории")
-                            ax.set_ylabel("Значения")
-                            ax.set_title("Распределение значений")
-                            plt.xticks(rotation=45, ha="right")
-                            st.pyplot(fig)
+                        # Отображаем график
+                        st.subheader("📈 График")
+                        fig, ax = plt.subplots(figsize=(5, 4))
+                        ax.bar(df[df.columns[0]], df[df.columns[1]].astype(float), color="skyblue")
+                        ax.set_xlabel("Категории")
+                        ax.set_ylabel("Значения")
+                        ax.set_title("Распределение значений")
+                        plt.xticks(rotation=45, ha="right")
+                        st.pyplot(fig)
                     else:
-                        st.warning("Нет данных для отображения.")
+                        st.warning("Данные отсутствуют или пустые.")
                 else:
                     st.warning("Ответ от Webhook не содержит ожидаемого ключа 'data'.")
             except requests.exceptions.RequestException as e:
