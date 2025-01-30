@@ -11,12 +11,12 @@ N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook-test/93ad63a0-8bab-4cf1-
 # Заголовок
 st.title("📊 Аналитическая система")
 
-# Инструкция для пользователя
+# Инструкция
 st.markdown("""
 ### ℹ️ Как пользоваться этим инструментом?
 Этот инструмент позволяет получать данные о продажах на основе вашего текстового запроса.  
 Просто опишите, что вам нужно, например:  
-📌 *"Продажи по дистрибьюторам и товарам за январь 2025 в штуках и деньгах"*  
+📌 *"Продажи по дистрибьюторам и товарам за январь в штуках и деньгах"*  
 и система автоматически обработает запрос и выдаст нужные данные.  
 🔹 **Вам не нужно разбираться в технических деталях** — просто сформулируйте запрос естественным языком.
 """)
@@ -37,6 +37,10 @@ if st.button("Сформировать отчет"):
                 if "data" in result and isinstance(result["data"], list) and len(result["data"]) > 0:
                     df = pd.DataFrame(result["data"])
 
+                    # Принудительное приведение числовых колонок к float
+                    for col in df.columns[1:]:
+                        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
                     # Определение числовых колонок
                     numeric_columns = df.select_dtypes(include=["number"]).columns
 
@@ -47,37 +51,36 @@ if st.button("Сформировать отчет"):
                     # Рассчитываем итоговую строку
                     total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
 
-                    # Выбор метрик
-                    selected_metrics = st.multiselect(
-                        "Выберите метрики для графика:", numeric_columns, default=numeric_columns[:1]
+                    # Настраиваем AgGrid для правильного отображения чисел
+                    gb = GridOptionsBuilder.from_dataframe(df)
+                    gb.configure_pagination(paginationAutoPageSize=True)
+                    gb.configure_default_column(editable=False, groupable=True, sortable=True)
+
+                    # Применяем форматирование чисел (без кавычек)
+                    for col in numeric_columns:
+                        gb.configure_column(col, type=["numericColumn", "number"], valueFormatter="x.toLocaleString()")
+
+                    gridOptions = gb.build()
+                    gridOptions["suppressAggFuncInHeader"] = True
+                    gridOptions["pinnedBottomRowData"] = [total_row]
+
+                    # Отображаем интерактивную таблицу
+                    st.subheader("📊 Интерактивная таблица")
+                    AgGrid(df, gridOptions=gridOptions, height=500, theme="streamlit")
+
+                    # Отображаем график
+                    st.subheader("📈 Интерактивные графики")
+                    selected_metric = st.selectbox("Выберите метрику для графика:", numeric_columns)
+                    fig = px.bar(
+                        df[:-1],  # Исключаем итоговую строку
+                        x=df.columns[0],
+                        y=selected_metric,
+                        labels={df.columns[0]: "Категории", selected_metric: "Значения"},
+                        title=f"Распределение по {selected_metric}",
+                        text_auto=True,
                     )
+                    st.plotly_chart(fig, use_container_width=True)
 
-                    col1, col2 = st.columns(2)
-
-                    # Отображаем таблицу
-                    with col1:
-                        st.subheader("📊 Интерактивная таблица")
-                        gb = GridOptionsBuilder.from_dataframe(df)
-                        gb.configure_pagination(paginationAutoPageSize=True)
-                        gb.configure_default_column(editable=False, groupable=True, sortable=True)
-                        gridOptions = gb.build()
-                        gridOptions["suppressAggFuncInHeader"] = True
-                        gridOptions["pinnedBottomRowData"] = [total_row]
-                        AgGrid(df, gridOptions=gridOptions, height=500, theme="streamlit")
-
-                    # Отображаем графики
-                    with col2:
-                        st.subheader("📈 Интерактивные графики")
-                        for metric in selected_metrics:
-                            fig = px.bar(
-                                df[:-1],  # Исключаем итоговую строку
-                                x=df.columns[0],
-                                y=metric,
-                                labels={df.columns[0]: "Категории", metric: "Значения"},
-                                title=f"Распределение по {metric}",
-                                text_auto=True,
-                            )
-                            st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning("Ошибка: Webhook вернул пустые или некорректные данные.")
             except requests.exceptions.RequestException as e:
