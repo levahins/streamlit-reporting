@@ -28,26 +28,29 @@ if st.button("Сформировать отчет"):
                 if "data" in result:
                     raw_data = result["data"]
 
-                    # Преобразуем массив массивов в DataFrame
+                    # Преобразуем вложенные массивы в DataFrame
                     if isinstance(raw_data, list):
                         df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
 
-                        # Преобразуем числовые значения
-                        for col in df.columns[1:]:  # Пропускаем первый столбец (категории)
+                        # Попытка преобразовать числовые столбцы к float
+                        for col in df.columns[1:]:
                             df[col] = pd.to_numeric(df[col], errors='coerce')
 
-                        # Сортируем таблицу по убыванию значений в первом числовом столбце
-                        df = df.sort_values(by=df.columns[1], ascending=False)
+                        # Сортировка таблицы по убыванию значений в первом числовом столбце
+                        numeric_columns = df.select_dtypes(include=["number"]).columns
+                        if len(numeric_columns) > 0:
+                            df = df.sort_values(by=numeric_columns[0], ascending=False)
 
-                        # Добавляем строку с суммой значений
-                        sum_row = ["Итого"] + list(df.iloc[:, 1:].sum())
-                        df.loc["Итого"] = sum_row
+                        # Рассчет суммы значений по каждому числовому столбцу
+                        sum_row = df[numeric_columns].sum().to_frame().T
+                        sum_row.insert(0, df.columns[0], "Итого")  # Добавляем текст "Итого" в первый столбец
+                        df = pd.concat([df, sum_row], ignore_index=True)
 
                         # Настраиваем интерактивную таблицу
                         st.subheader("📊 Интерактивная таблица")
                         gb = GridOptionsBuilder.from_dataframe(df)
                         gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
-                        gb.configure_default_column(editable=False, groupable=True)  # Настройки колонок
+                        gb.configure_default_column(editable=False, groupable=True, sortable=True)  # Настройки колонок
                         gridOptions = gb.build()
 
                         # Отображаем таблицу
