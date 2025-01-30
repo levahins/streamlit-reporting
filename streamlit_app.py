@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import matplotlib.pyplot as plt
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 
@@ -46,15 +47,35 @@ if st.button("Сформировать отчет"):
                         sum_row.insert(0, df.columns[0], "Итого")  # Добавляем текст "Итого" в первый столбец
                         df = pd.concat([df, sum_row], ignore_index=True)
 
-                        # Настраиваем интерактивную таблицу
-                        st.subheader("📊 Интерактивная таблица")
-                        gb = GridOptionsBuilder.from_dataframe(df)
-                        gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
-                        gb.configure_default_column(editable=False, groupable=True, sortable=True)  # Настройки колонок
-                        gridOptions = gb.build()
+                        # Создаем макет с таблицей и графиком
+                        col1, col2 = st.columns([2, 1])
 
-                        # Отображаем таблицу
-                        AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
+                        # Отображаем таблицу в первой колонке
+                        with col1:
+                            st.subheader("📊 Интерактивная таблица")
+                            gb = GridOptionsBuilder.from_dataframe(df)
+                            gb.configure_pagination(paginationAutoPageSize=True)  # Пагинация
+                            gb.configure_default_column(editable=False, groupable=True, sortable=True)  # Настройки колонок
+                            gridOptions = gb.build()
+
+                            # Указываем итоговую строку явно
+                            gridOptions["suppressAggFuncInHeader"] = True
+                            gridOptions["pinnedBottomRowData"] = [
+                                {col: sum_row.iloc[0][col] if col in numeric_columns else "Итого" for col in df.columns}
+                            ]
+
+                            AgGrid(df, gridOptions=gridOptions, height=400, theme="streamlit")
+
+                        # Отображаем график во второй колонке
+                        with col2:
+                            st.subheader("📈 График")
+                            fig, ax = plt.subplots(figsize=(5, 4))
+                            ax.bar(df[df.columns[0]][:-1], df[numeric_columns[0]][:-1], color="skyblue")
+                            ax.set_xlabel("Категории")
+                            ax.set_ylabel("Значения")
+                            ax.set_title("Распределение значений")
+                            plt.xticks(rotation=45, ha="right")
+                            st.pyplot(fig)
                     else:
                         st.warning("Нет данных для отображения.")
                 else:
