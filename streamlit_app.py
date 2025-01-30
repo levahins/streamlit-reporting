@@ -37,6 +37,9 @@ if st.button("Сформировать отчет"):
                         for col in df.columns[1:]:
                             df[col] = pd.to_numeric(df[col], errors='coerce')
 
+                        # Преобразование всех данных в сериализуемые типы
+                        df = df.astype(str)
+
                         # Сортировка таблицы по убыванию значений в первом числовом столбце
                         numeric_columns = df.select_dtypes(include=["number"]).columns
                         if len(numeric_columns) > 0:
@@ -46,6 +49,9 @@ if st.button("Сформировать отчет"):
                         sum_row = df[numeric_columns].sum().to_frame().T
                         sum_row.insert(0, df.columns[0], "Итого")  # Добавляем текст "Итого" в первый столбец
                         df = pd.concat([df, sum_row], ignore_index=True)
+
+                        # Преобразование данных таблицы в сериализуемые типы
+                        df = df.astype(str)
 
                         # Создаем макет с таблицей и графиком
                         col1, col2 = st.columns([2, 1])
