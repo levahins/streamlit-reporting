@@ -1,12 +1,8 @@
 import streamlit as st
-import requests
 import pandas as pd
 import plotly.express as px
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
-
-# URL n8n Webhook
-N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook-test/93ad63a0-8bab-4cf1-b446-f71ae3f988fa"
 
 # Заголовок
 st.title("📊 Аналитическая система")
@@ -30,24 +26,36 @@ if st.button("Сформировать отчет"):
     if user_input:
         with st.spinner("Генерируем отчет... ⏳"):
             try:
-                response = requests.post(N8N_WEBHOOK_URL, json={"query": user_input})
-                response.raise_for_status()
-                result = response.json()
+                # Заглушка для имитации ответа вебхука
+                result = {
+                    "data": [
+                        {
+                            "Дистриб'ютор": "DS-Turkey-Adana",
+                            "Оборот в штуках": 80739,
+                            "Оборот в грошах дистриб'ютора": 602461820
+                        },
+                        {
+                            "Дистриб'ютор": "DS-Turkey-Ankara",
+                            "Оборот в штуках": 15500,
+                            "Оборот в грошах дистриб'ютора": 151002701
+                        },
+                        {
+                            "Дистриб'ютор": "DS-Turkey-Aydin",
+                            "Оборот в штуках": 13156,
+                            "Оборот в грошах дистриб'ютора": 114514466
+                        },
+                        {
+                            "Дистриб'ютор": "DS-Turkey-Batman",
+                            "Оборот в штуках": 83480,
+                            "Оборот в грошах дистриб'ютора": 685734988
+                        }
+                    ]
+                }
 
-                if "data" in result and isinstance(result["data"], str):
-                    # Разбиваем CSV-данные на строки
-                    raw_data = result["data"].strip().split("\r\n")
-
-                    # Разделяем заголовки и строки
-                    headers = [header.strip('"') for header in raw_data[0].split(";")]
-                    rows = [row.split(";") for row in raw_data[1:]]
-
+                # Проверяем, что данные присутствуют
+                if "data" in result and isinstance(result["data"], list):
                     # Преобразуем данные в DataFrame
-                    df = pd.DataFrame(rows, columns=headers)
-
-                    # Приводим числовые значения к float
-                    for col in headers[1:]:
-                        df[col] = pd.to_numeric(df[col].str.replace('"', ''), errors="coerce").fillna(0)
+                    df = pd.DataFrame(result["data"])
 
                     # Определяем числовые колонки
                     numeric_columns = df.select_dtypes(include=["number"]).columns
@@ -59,14 +67,10 @@ if st.button("Сформировать отчет"):
                     # Рассчитываем итоговую строку
                     total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
 
-                    # Настраиваем AgGrid для правильного отображения чисел
+                    # Настраиваем AgGrid для правильного отображения данных
                     gb = GridOptionsBuilder.from_dataframe(df)
                     gb.configure_pagination(paginationAutoPageSize=True)
                     gb.configure_default_column(editable=False, groupable=True, sortable=True)
-
-                    # Применяем форматирование чисел (без кавычек)
-                    for col in numeric_columns:
-                        gb.configure_column(col, type=["numericColumn", "number"], valueFormatter="x.toLocaleString()")
 
                     gridOptions = gb.build()
                     gridOptions["suppressAggFuncInHeader"] = True
@@ -88,11 +92,8 @@ if st.button("Сформировать отчет"):
                         text_auto=True,
                     )
                     st.plotly_chart(fig, use_container_width=True)
-
                 else:
                     st.warning("Ошибка: Webhook вернул пустые или некорректные данные.")
-            except requests.exceptions.RequestException as e:
-                st.error(f"Ошибка при запросе к n8n: {str(e)}")
             except Exception as e:
                 st.error(f"Неожиданная ошибка: {str(e)}")
     else:
