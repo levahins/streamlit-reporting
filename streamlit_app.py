@@ -22,8 +22,11 @@ if st.button("Сформировать отчет"):
                 # Получаем результат
                 result = response.json()
 
-                # Проверяем, если результат содержит данные
-                if len(result) > 0 and "data" in result[0]:
+                # Отладочная информация: показываем полный ответ
+                st.write("Отладка: Ответ от вебхука:", result)
+
+                # Проверяем, что результат содержит массив и ключ "data"
+                if isinstance(result, list) and len(result) > 0 and "data" in result[0]:
                     raw_data = result[0]["data"]
 
                     # Преобразуем массив массивов в DataFrame
@@ -36,8 +39,10 @@ if st.button("Сформировать отчет"):
                     else:
                         st.warning("Нет данных для отображения.")
                 else:
-                    st.warning("Ответ от Webhook не содержит данных.")
+                    st.warning("Ответ от Webhook не содержит ожидаемого ключа 'data'.")
             except requests.exceptions.RequestException as e:
                 st.error(f"Ошибка при запросе к n8n: {str(e)}")
+            except Exception as e:
+                st.error(f"Неожиданная ошибка: {str(e)}")
     else:
         st.warning("Введите запрос!")
