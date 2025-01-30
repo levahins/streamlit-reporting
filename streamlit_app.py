@@ -57,6 +57,10 @@ if st.button("Сформировать отчет"):
                     # Преобразуем данные в DataFrame
                     df = pd.DataFrame(result["data"])
 
+                    # Преобразуем числовые колонки в сериализуемые типы
+                    for col in df.select_dtypes(include=["number"]).columns:
+                        df[col] = df[col].astype(float)
+
                     # Определяем числовые колонки
                     numeric_columns = df.select_dtypes(include=["number"]).columns
 
@@ -66,6 +70,9 @@ if st.button("Сформировать отчет"):
 
                     # Рассчитываем итоговую строку
                     total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
+
+                    # Преобразуем итоговую строку в сериализуемый формат
+                    total_row = {key: float(value) if isinstance(value, (int, float)) else value for key, value in total_row.items()}
 
                     # Настраиваем AgGrid для правильного отображения данных
                     gb = GridOptionsBuilder.from_dataframe(df)
