@@ -38,6 +38,9 @@ if st.button("Сформировать отчет"):
                         for col in df.columns[1:]:
                             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
+                        # Преобразование всех данных в сериализуемые типы
+                        df = df.astype({col: float for col in df.select_dtypes(include=["number"]).columns})
+
                         # Сортировка таблицы по убыванию значений в первом числовом столбце
                         numeric_columns = df.select_dtypes(include=["number"]).columns
                         if len(numeric_columns) > 0:
@@ -45,6 +48,9 @@ if st.button("Сформировать отчет"):
 
                         # Рассчет итоговой строки
                         total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
+
+                        # Преобразование строки "Итого" в сериализуемый формат
+                        total_row = {key: float(value) if isinstance(value, (int, float)) else value for key, value in total_row.items()}
 
                         # Настраиваем интерактивную таблицу
                         st.subheader("📊 Интерактивная таблица")
