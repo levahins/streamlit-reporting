@@ -25,12 +25,13 @@ if st.button("Сформировать отчет"):
                 # Отладочная информация: показываем полный ответ
                 st.write("Отладка: Ответ от вебхука:", result)
 
-                # Проверяем, что результат содержит массив и ключ "data"
-                if isinstance(result, list) and len(result) > 0 and "data" in result[0]:
-                    raw_data = result[0]["data"]
+                # Проверяем, что результат содержит ключ "data"
+                if "data" in result:
+                    raw_data = result["data"]
 
-                    # Преобразуем массив массивов в DataFrame
-                    if raw_data and isinstance(raw_data, list):
+                    # Преобразуем вложенные массивы в DataFrame
+                    if isinstance(raw_data, list):
+                        # Убираем вложенную структуру и преобразуем в таблицу
                         df = pd.DataFrame(raw_data[1:], columns=raw_data[0])
 
                         # Отображаем таблицу
