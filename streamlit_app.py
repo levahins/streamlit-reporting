@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # URL n8n Webhook
-N8N_WEBHOOK_URL = "https://n8n.yourdomain.com/webhook/chatgpt_report"
+N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook-test/93ad63a0-8bab-4cf1-b446-f71ae3f988fa"
 
 st.title("📊 Аналитическая система")
 st.subheader("Введите запрос на естественном языке")
