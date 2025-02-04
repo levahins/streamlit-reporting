@@ -1,106 +1,58 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-from st_aggrid import AgGrid
-from st_aggrid.grid_options_builder import GridOptionsBuilder
 import requests
 
-# URL вашего вебхука https://spot2d.app.n8n.cloud/webhook-test/93ad63a0-8bab-4cf1-b446-f71ae3f988fa
-N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook/93ad63a0-8bab-4cf1-b446-f71ae3f988fa"
+# URL вашего вебхука (обновлён)
+N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook/dialogue-simulated"
 
-# Заголовок
-st.title("📊 Аналитическая система")
+# Заголовок страницы и инструкция
+st.title("💬 Диалог с аналитической системой")
+st.markdown(
+    """
+    **Добро пожаловать!**
 
-# Инструкция
-st.markdown("""
-### ℹ️ Как пользоваться этим инструментом?
-Этот инструмент позволяет получать данные о продажах на основе вашего текстового запроса.  
-Просто опишите, что вам нужно, например:  
-📌 *"Продажи по дистрибьюторам и товарам за январь 2025 в штуках и деньгах"*  
-и система автоматически обработает запрос и выдаст нужные данные.  
-🔹 **Вам не нужно разбираться в технических деталях** — просто сформулируйте запрос естественным языком.
-""")
+    Задавайте вопросы системе аналитики в свободной форме.  
+    Система сгенерирует логичный и подробный ответ, как если бы анализировала реальные данные.
+    """
+)
 
-st.subheader("Введите запрос на естественном языке")
+# Инициализация истории диалога в session_state
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-# Хранение данных в сессии
-if "dataframe" not in st.session_state:
-    st.session_state["dataframe"] = None
+# Кнопка для начала нового диалога (очистка истории)
+if st.button("Начать новый диалог"):
+    st.session_state.chat_history = []
 
-# Кнопка для сброса состояния
-reset_clicked = st.button("Очистить данные и начать новый запрос")
-if reset_clicked:
-    st.session_state.clear()  # Сбрасываем все данные в сессии
-    st.experimental_set_query_params()  # Обновляем страницу, очищая состояние
-
-# Форма для ввода запроса
-user_input = st.text_input("Введите текстовый запрос:", "")
-
-if st.button("Сформировать отчет"):
-    if user_input:
-        with st.spinner("Генерируем отчет... ⏳"):
-            try:
-                # Запрос к вебхуку
-                response = requests.post(N8N_WEBHOOK_URL, json={"query": user_input})
-                response.raise_for_status()
-                result = response.json()
-
-                # Проверяем, что данные присутствуют
-                if "data" in result and isinstance(result["data"], list):
-                    # Преобразуем данные в DataFrame
-                    df = pd.DataFrame(result["data"])
-
-                    # Преобразуем числовые колонки в сериализуемые типы
-                    for col in df.select_dtypes(include=["number"]).columns:
-                        df[col] = df[col].astype(float)
-
-                    # Сохраняем DataFrame в сессии
-                    st.session_state["dataframe"] = df
-                else:
-                    st.warning("Ошибка: Webhook вернул пустые или некорректные данные.")
-            except Exception as e:
-                st.error(f"Неожиданная ошибка: {str(e)}")
+# Отображение истории переписки
+st.markdown("### История диалога:")
+for message in st.session_state.chat_history:
+    if message["role"] == "user":
+        st.markdown(f"**Вы:** {message['content']}")
     else:
-        st.warning("Введите запрос!")
+        st.markdown(f"**Система:** {message['content']}")
 
-# Отображение данных и графиков, если данные сохранены
-if st.session_state["dataframe"] is not None:
-    df = st.session_state["dataframe"]
+st.markdown("---")
 
-    # Определяем числовые колонки
-    numeric_columns = df.select_dtypes(include=["number"]).columns
+# Используем форму для ввода сообщения с clear_on_submit=True,
+# а обработку отправки выносим за пределы блока формы, чтобы избежать двойного добавления.
+with st.form(key="chat_form", clear_on_submit=True):
+    user_message = st.text_input("Ваше сообщение:")
+    submitted = st.form_submit_button("Отправить сообщение")
 
-    # Рассчитываем итоговую строку
-    total_row = {col: df[col].sum() if col in numeric_columns else "Итого" for col in df.columns}
+if submitted and user_message:
+    # Добавляем сообщение пользователя в историю
+    st.session_state.chat_history.append({"role": "user", "content": user_message})
 
-    # Преобразуем итоговую строку в сериализуемый формат
-    total_row = {key: float(value) if isinstance(value, (int, float)) else value for key, value in total_row.items()}
+    # Отправляем запрос на вебхук и получаем ответ системы
+    with st.spinner("Ожидание ответа системы..."):
+        try:
+            response = requests.post(N8N_WEBHOOK_URL, json={"query": user_message})
+            response.raise_for_status()
+            result = response.json()
+            # Ожидается, что webhook возвращает ответ в поле 'answer'
+            answer = result.get("answer", "Система не вернула ответ.")
+        except Exception as e:
+            answer = f"Ошибка: {e}"
 
-    # Настраиваем AgGrid для правильного отображения данных
-    gb = GridOptionsBuilder.from_dataframe(df)
-    gb.configure_pagination(paginationAutoPageSize=True)
-    gb.configure_default_column(editable=False, groupable=True, sortable=True)
-
-    gridOptions = gb.build()
-    gridOptions["suppressAggFuncInHeader"] = True
-    gridOptions["pinnedBottomRowData"] = [total_row]
-
-    # Рассчитываем высоту таблицы
-    table_height = min(50 * len(df), 500)  # 50 пикселей на строку, максимум 500
-
-    # Отображаем интерактивную таблицу
-    st.subheader("📊 Интерактивная таблица")
-    AgGrid(df, gridOptions=gridOptions, height=table_height, theme="streamlit")
-
-    # Отображаем график
-    st.subheader("📈 Интерактивные графики")
-    selected_metric = st.selectbox("Выберите метрику для графика:", numeric_columns)
-    fig = px.bar(
-        df,  # Используем полный DataFrame
-        x=df.columns[0],
-        y=selected_metric,
-        labels={df.columns[0]: "Категории", selected_metric: "Значения"},
-        title=f"Распределение по {selected_metric}",
-        text_auto=True,
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Добавляем ответ системы в историю диалога
+    st.session_state.chat_history.append({"role": "system", "content": answer})
