@@ -1,9 +1,6 @@
 import streamlit as st
 import requests
 
-# Убедитесь, что у вас Streamlit версии 1.22 или выше:
-# pip install --upgrade streamlit
-
 # URL вебхука (обновлён)
 N8N_WEBHOOK_URL = "https://spot2d.app.n8n.cloud/webhook/dialogue-simulated"
 
@@ -13,10 +10,14 @@ st.title("💬 Чат с аналитической системой")
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
-# Функция для отправки запроса на вебхук и получения ответа системы
-def get_system_response(user_text):
+# Функция для отправки запроса на вебхук с передачей всей истории диалога
+def get_system_response():
     try:
-        response = requests.post(N8N_WEBHOOK_URL, json={"query": user_text})
+        # Формируем payload, в котором передаём всю историю сообщений
+        payload = {
+            "history": st.session_state["messages"]
+        }
+        response = requests.post(N8N_WEBHOOK_URL, json=payload)
         response.raise_for_status()
         result = response.json()
         return result.get("answer", "Система не вернула ответ.")
@@ -34,13 +35,13 @@ for msg in st.session_state["messages"]:
 user_input = st.chat_input("Ваше сообщение:")
 
 if user_input:
-    # Добавляем сообщение пользователя в историю и отображаем его
+    # Добавляем новое сообщение пользователя в историю и отображаем его
     st.session_state.messages.append({"role": "user", "content": user_input})
     st.chat_message("user").write(user_input)
     
-    # Получаем ответ системы
+    # Получаем ответ системы с учетом всей истории диалога
     with st.spinner("Ожидание ответа системы..."):
-        answer = get_system_response(user_input)
+        answer = get_system_response()
     
     # Сохраняем и отображаем ответ системы
     st.session_state.messages.append({"role": "assistant", "content": answer})
